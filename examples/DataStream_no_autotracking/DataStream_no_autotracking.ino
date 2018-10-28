@@ -1,16 +1,14 @@
-#include <MPR121.h>
+/**
+ * A simple example to show the manual calibration of electrodes.
+ */
 #include <Wire.h>
-
-// this is the touch threshold - setting it low makes it more like a proximity trigger
-// default value is 40 for touch
-const int touchThreshold = 40;
-// this is the release threshold - must ALWAYS be smaller than the touch threshold
-// default value is 20 for touch
-const int releaseThreshold = 20;
+#include <MPR121.h>
 
 void setup(){  
   Serial.begin(115200);
-  while(!Serial); // only needed for Arduino Leonardo or Bare Touch Board 
+  while(!Serial);
+
+  Wire.begin();
   
   if(!MPR121.begin(0x5A)){ 
     Serial.println("error setting up MPR121");  
@@ -40,11 +38,15 @@ void setup(){
     while(1);
   }
 
+  // In this case, we don't really need touch-release thresholds...
   MPR121.setTouchThreshold(0);
   MPR121.setReleaseThreshold(0);
+  
   // Set the electrode's baselines
   for(int i=0; i<13;i++){
-    MPR121.setBaseline(i,900+50*i);
+    // NOTE: the values can be only multiple of 4, 
+    // otherwise they are floored to the nearest multiple
+    MPR121.setBaseline(i,50+50*i);
   }
   MPR121.setCalibrationLock(CAL_LOCK_DISABLED);
 }
@@ -54,37 +56,19 @@ void loop(){
 }
 
 void readRawInputs(){
-    int i;
-    
     MPR121.updateAll();
 
     // True or False
     Serial.print("TOUCH: ");
-    for(i=0; i<13; i++){          // 13 touch values
+    for(int i=0; i<13; i++){
       Serial.print(MPR121.getTouchData(i), DEC);
       if(i<12) Serial.print(" ");
     }    
-    Serial.println();   
-
-    // The previous configured touch thresholds
-    Serial.print("TTHS: ");
-    for(i=0; i<13; i++){          // 13 touch thresholds
-      Serial.print(MPR121.getTouchThreshold(i), DEC); 
-      if(i<12) Serial.print(" ");
-    }   
-    Serial.println();
-
-    // The previous configured release thresholds
-    Serial.print("RTHS: ");
-    for(i=0; i<13; i++){
-      Serial.print(MPR121.getReleaseThreshold(i), DEC); 
-      if(i<12) Serial.print(" ");
-    }   
     Serial.println();
 
     // Actual filtered values
     Serial.print("FDAT: ");
-    for(i=0; i<13; i++){
+    for(int i=0; i<13; i++){
       Serial.print(MPR121.getFilteredData(i), DEC);
       if(i<12) Serial.print(" ");
     } 
@@ -92,22 +76,21 @@ void readRawInputs(){
 
     // Actual baseline
     Serial.print("BVAL: ");
-    for(i=0; i<13; i++){
+    for(int i=0; i<13; i++){
       Serial.print(MPR121.getBaselineData(i), DEC);
       if(i<12) Serial.print(" ");
     } 
     Serial.println();
     
-    // the trigger and threshold values refer to the difference between
-    // the filtered data and the running baseline - see p13 of 
-    // http://www.freescale.com/files/sensors/doc/data_sheet/MPR121.pdf
-    
     Serial.print("DIFF: ");
-    for(i=0; i<13; i++){          // 13 value pairs
+    for(int i=0; i<13; i++){          // 13 value pairs
       Serial.print(MPR121.getBaselineData(i)-MPR121.getFilteredData(i), DEC);
       if(i<12) Serial.print(" ");
     }           
     Serial.println();
 
+    Serial.println();
+
+    // Fair delay to avoid overhelming messages
     delay(500);
 }
