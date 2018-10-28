@@ -51,6 +51,8 @@ void setup(){
   Serial.begin(baudRate);
   while(!Serial); // only needed for Arduino Leonardo or Bare Touch Board 
   
+  Wire.begin();
+
   // 0x5C is the MPR121 I2C address on the Bare Touch Board
   if(!MPR121.begin(0x5C)){ 
     Serial.println("error setting up MPR121");  

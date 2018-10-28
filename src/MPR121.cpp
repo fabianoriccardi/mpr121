@@ -126,9 +126,6 @@ uint8_t MPR121_t::getRegister(uint8_t reg){
 }
 
 bool MPR121_t::begin(uint8_t address, uint8_t touchThreshold, uint8_t releaseThreshold, uint8_t interruptPin){
-
-  Wire.begin(); 
-
   // addresses only valid 0x5A to 0x5D - if we don't change the address it stays at default
   if(address>=0x5A && address<=0x5D) 
   {
