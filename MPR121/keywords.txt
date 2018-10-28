@@ -86,6 +86,7 @@ digitalToggle	KEYWORD2
 digitalRead	KEYWORD2
 analogWrite	KEYWORD2
 setCalibrationLock	KEYWORD2
+setBaseline KEYWORD2
 
 #######################################
 # Constants (LITERAL1)

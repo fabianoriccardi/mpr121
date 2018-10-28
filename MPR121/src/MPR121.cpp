@@ -39,9 +39,19 @@ extern "C" {
   #include <string.h>
   #include <inttypes.h>
 }
-
+#include "Arduino.h"
 #include "MPR121.h"
-#include <Arduino.h>
+
+#pragma push_macro("INTERRUPT")
+#undef INTERRUPT
+#pragma push_macro("INPUT")
+#undef INPUT
+#pragma push_macro("INPUT_PULLUP")
+#undef INPUT_PULLUP
+#pragma push_macro("INPUT_PULLDOWN")
+#undef INPUT_PULLDOWN
+#pragma push_macro("OUTPUT")
+#undef OUTPUT
 
 #define NOT_INITED_BIT 0
 #define ADDRESS_UNKNOWN_BIT 1
@@ -88,7 +98,7 @@ void MPR121_t::setRegister(uint8_t reg, uint8_t value){
 }
 
 uint8_t MPR121_t::getRegister(uint8_t reg){
-  uint8_t scratch;
+  uint8_t scratch=0x0;
 
     Wire.beginTransmission(address); 
     Wire.write(reg); // set address to read from our requested register
@@ -456,13 +466,6 @@ uint8_t MPR121_t::getReleaseThreshold(uint8_t electrode){
   //return(51);
 }
 
-void MPR121_t::setInterruptPin(uint8_t pin){
-  // :: here forces the compiler to use Arduino's pinMode, not MPR121's
-  if(!isInited()) return;
-  ::pinMode(pin, INPUT_PULLUP);
-  interruptPin = pin;   
-}
-
 bool MPR121_t::touchStatusChanged(){
   // :: here forces the compiler to use Arduino's digitalRead, not MPR121's
   return(autoTouchStatusFlag || (!::digitalRead(interruptPin)));
@@ -524,6 +527,22 @@ void MPR121_t::setCalibrationLock(mpr121_cal_lock_t lock){
   if(wasRunning) run();
 }
 
+void MPR121_t::setBaseline(uint8_t electrode, uint16_t baselineValue){
+
+  if(!isInited()) return;
+
+  if(electrode>=13) return;
+  if(baselineValue>=1024) return;
+
+  bool wasRunning = running;
+
+  if(wasRunning) stop();
+  
+  setRegister(MPR121_E0BV+electrode, baselineValue>>2);
+  
+  if(wasRunning) run();
+}
+
 void MPR121_t::setNumDigPins(uint8_t numPins){
   if(!isInited()) return;
   bool wasRunning = running;
@@ -558,12 +577,12 @@ void MPR121_t::pinMode(uint8_t electrode, mpr121_pinf_t mode){
 
   // only valid for ELE4..ELE11
   if(electrode<4 || electrode >11 || !isInited()) return; 
-                            
+
   // LED0..LED7                      
   uint8_t bitmask = 1<<(electrode-4);                      
-                       
+                   
   switch(mode){
-    case INPUT_PULLDOWN:
+    case mpr121_pinf_t::INPUT_PULLDOWN:
       // MPR121_EN = 1
       // MPR121_DIR = 0
       // MPR121_CTL0 = 1
@@ -574,7 +593,7 @@ void MPR121_t::pinMode(uint8_t electrode, mpr121_pinf_t mode){
       setRegister(MPR121_CTL1, getRegister(MPR121_CTL1) & ~bitmask);    
       break;    
 
-    case OUTPUT_HIGHSIDE:
+    case mpr121_pinf_t::OUTPUT_HIGHSIDE:
       // MPR121_EN = 1
       // MPR121_DIR = 1
       // MPR121_CTL0 = 1
@@ -585,7 +604,7 @@ void MPR121_t::pinMode(uint8_t electrode, mpr121_pinf_t mode){
       setRegister(MPR121_CTL1, getRegister(MPR121_CTL1) | bitmask);           
       break;    
 
-    case OUTPUT_LOWSIDE:
+    case mpr121_pinf_t::OUTPUT_LOWSIDE:
       // MPR121_EN = 1
       // MPR121_DIR = 1
       // MPR121_CTL0 = 1
@@ -595,23 +614,7 @@ void MPR121_t::pinMode(uint8_t electrode, mpr121_pinf_t mode){
       setRegister(MPR121_CTL0, getRegister(MPR121_CTL0) | bitmask);
       setRegister(MPR121_CTL1, getRegister(MPR121_CTL1) & ~bitmask);              
       break;  
-
-    default:
-      break;    
-  }
-}
-
-void MPR121_t::pinMode(uint8_t electrode, int mode){
-  // this is to catch the fact that Arduino prefers its definitions of 
-  // INPUT, OUTPUT and INPUT_PULLUP to ours...
-
-  // only valid for ELE4..ELE11
-  if(electrode<4 || electrode >11 || !isInited()) return;   
-  
-  uint8_t bitmask = 1<<(electrode-4); 
-  
-  switch(mode){
-    case OUTPUT:
+    case mpr121_pinf_t::OUTPUT:
       // MPR121_EN = 1
       // MPR121_DIR = 1
       // MPR121_CTL0 = 0
@@ -622,7 +625,7 @@ void MPR121_t::pinMode(uint8_t electrode, int mode){
       setRegister(MPR121_CTL1, getRegister(MPR121_CTL1) & ~bitmask);        
       break;
         
-    case INPUT:
+    case mpr121_pinf_t::INPUT:
       // MPR121_EN = 1
       // MPR121_DIR = 0
       // MPR121_CTL0 = 0
@@ -633,7 +636,7 @@ void MPR121_t::pinMode(uint8_t electrode, int mode){
       setRegister(MPR121_CTL1, getRegister(MPR121_CTL1) & ~bitmask);            
       break;
 
-    case INPUT_PULLUP:
+    case mpr121_pinf_t::INPUT_PULLUP:
       // MPR121_EN = 1
       // MPR121_DIR = 0
       // MPR121_CTL0 = 1
@@ -643,9 +646,8 @@ void MPR121_t::pinMode(uint8_t electrode, int mode){
       setRegister(MPR121_CTL0, getRegister(MPR121_CTL0) | bitmask);
       setRegister(MPR121_CTL1, getRegister(MPR121_CTL1) | bitmask);   
       break;    
-      
     default:
-      break;
+      break;    
   }
 }
 
@@ -745,3 +747,16 @@ void MPR121_t::setSamplePeriod(mpr121_sample_interval_t period){
 }
 
 MPR121_t MPR121 = MPR121_t();
+
+#pragma pop_macro("INTERRUPT")
+#pragma pop_macro("INPUT")
+#pragma pop_macro("INPUT_PULLDOWN")
+#pragma pop_macro("INPUT_PULLUP")
+#pragma pop_macro("OUTPUT")
+
+void MPR121_t::setInterruptPin(uint8_t pin){
+  // :: here forces the compiler to use Arduino's pinMode, not MPR121's
+  if(!isInited()) return;
+  ::pinMode(pin, INPUT_PULLUP);
+  interruptPin = pin;   
+}

@@ -37,8 +37,18 @@
 #ifndef MPR121_H
 #define MPR121_H
 
-#include "MPR121_defs.h"
 #include <Wire.h>
+#pragma push_macro("INTERRUPT")
+#undef INTERRUPT
+#pragma push_macro("INPUT")
+#undef INPUT
+#pragma push_macro("INPUT_PULLUP")
+#undef INPUT_PULLUP
+#pragma push_macro("INPUT_PULLDOWN")
+#undef INPUT_PULLDOWN
+#pragma push_macro("OUTPUT")
+#undef OUTPUT
+#include "MPR121_defs.h"
 
 // idea behind this is to create a settings structure that we can use to store 
 // all the setup variables for a particular setup - comes pre-instantiated with 
@@ -145,27 +155,14 @@ struct MPR121_settings_t
 };
 
 // GPIO pin function constants
-enum mpr121_pinf_t
+enum class mpr121_pinf_t
 {
-  // INPUT and OUTPUT (and others) are already defined by Arduino, use its definitions if they exist
-#ifndef INPUT  
-  INPUT,      // digital input
-#endif
-#ifndef INPUT_PULLUP
-  INPUT_PULLUP,   // digital input with pullup
-#endif
-#ifndef INPUT_PULLDOWN
-  INPUT_PULLDOWN,   // digital input with pulldown
-#endif
-#ifndef OUTPUT
-  OUTPUT,     // digital output (push-pull)
-#endif
-#ifndef OUTPUT_HIGHSIDE
-  OUTPUT_HIGHSIDE,  // digital output, open collector (high side)
-#endif
-#ifndef OUTPUT_LOWSIDE
-  OUTPUT_LOWSIDE    // digital output, open collector (low side)
-#endif
+  INPUT = 1,      // digital input
+  INPUT_PULLUP = 2,   // digital input with pullup
+  INPUT_PULLDOWN = 3,   // digital input with pulldown
+  OUTPUT = 4,     // digital output (push-pull)
+  OUTPUT_HIGHSIDE = 5,  // digital output, open collector (high side)
+  OUTPUT_LOWSIDE = 6    // digital output, open collector (low side)
 };
 
 // "13th electrode" proximity modes
@@ -332,6 +329,10 @@ class MPR121_t
     // when run mode is re-entered)
     void setCalibrationLock(mpr121_cal_lock_t lock);
 
+    //Set a baseline value for a specified electrode. 
+    //Useful in case of no-autotracking baseline
+    void setBaseline(uint8_t electrode, uint16_t baselineValue);
+
     // Set the number of enabled electrodes, from 0 (which implicitly enters 
     // stop mode) up to 12. This allows for a reduction in power consumption
     // when using fewer electrodes and faster update rates. Implementation is 
@@ -352,7 +353,6 @@ class MPR121_t
     // setNumDigPins() - see section "GPIO pin function constants"
     // for details
     void pinMode(uint8_t electrode, mpr121_pinf_t mode); 
-    void pinMode(uint8_t electrode, int mode);        
 
     // Similar to digitalWrite in Arduino for GPIO electrode
     void digitalWrite(uint8_t electrode, uint8_t val);
@@ -397,5 +397,10 @@ class MPR121_t
 };
 
 extern MPR121_t MPR121;
+#pragma pop_macro("INTERRUPT")
+#pragma pop_macro("INPUT")
+#pragma pop_macro("INPUT_PULLDOWN")
+#pragma pop_macro("INPUT_PULLUP")
+#pragma pop_macro("OUTPUT")
 
 #endif // MPR121_H
